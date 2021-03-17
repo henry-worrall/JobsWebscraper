@@ -1,7 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.utils import join_host_port
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as EC, wait
+import pandas as pd
 
 """
 Monster's job website function by using the request in the URL bar to get Job descriptions.
@@ -27,6 +29,7 @@ For each job
 ######## PARAMETERS ###########
 job = "junior developer"
 location = "london"
+required_results = 2000
 ###############################
 
 #define where the webdriver is located
@@ -45,7 +48,7 @@ def click_element(id, by=By.ID):
     except:
         print(f"Element {id} not found.")
 
-# define function to send keystrokes to element
+# define function to send keystrokes to element, based off ID by default
 def send_text(id, text, by=By.ID):
     try:
         element = WebDriverWait(driver, 10).until(
@@ -55,17 +58,17 @@ def send_text(id, text, by=By.ID):
     except:
         print(f"Element {id} not found.")
 
-# define function to gather text/data
-def get_text(id, by=By.ID):
+# define function to gather text/data, based off ID by default
+def get_text(id, by=By.ID, wait=10):
     try:
-        element = WebDriverWait(driver, 10).until(
+        element = WebDriverWait(driver, wait).until(
             EC.presence_of_element_located((by, str(id)))
             )
         return element.text
     except:
         print(f"Element {id} not found.")
 
-# define a wait for element function
+# define a wait for element function, based off Class Name by default
 def element_wait(id, by=By.CLASS_NAME):
     try:
         element = WebDriverWait(driver, 10).until(
@@ -88,23 +91,48 @@ click_element("onetrust-accept-btn-handler")
 no_jobs = get_text("/html/body/div[1]/div[2]/div/div[1]/div[2]/h1/strong", by=By.XPATH)
 no_pages = str((int(no_jobs)//10) + 1)
 
-search_pages = [i for i in range(1,int(no_pages),5)]
+search_pages = [i for i in range(5,int(no_pages),5)]
 
 r_list = []
 # loop over all the relevant search pages
 for page in search_pages:
-    # navigate to url with all jobs
-    driver.get(f"https://www.monster.co.uk/jobs/search?q={job}&where={location}&page={page}")
+# for page in [5]:
+    if len(r_list) >= required_results:
+        break
+    else:
+        # navigate to url with all jobs
+        driver.get(f"https://www.monster.co.uk/jobs/search?q={job}&where={location}&page={page}")
 
-    element_wait("result-card")
-    # find all results
-    results = driver.find_elements_by_class_name("results-card")
+        element_wait("result-card")
+        # find all results
+        results = driver.find_elements_by_class_name("results-card")
 
-    # loop over results
-    for result in results:
-        result.click()
-        description = driver.find_element_by_class_name('job-description')
-        r_list.append(description.text)
+        # loop over results
+        for result in results:
+            row = {}
+            result.click()
+            job_title = get_text('.//*[@id="app"]/div[1]/div[2]/div/div[2]/div[2]/div[2]/div/div/div/div[1]/div/div[1]/div[2]/h1', by=By.XPATH, wait=0.3)
+            company_name = get_text('.//*[@id="app"]/div[1]/div[2]/div/div[2]/div[2]/div[2]/div/div/div/div[1]/div/div[1]/div[2]/div[1]', by=By.XPATH, wait=0.3)
+            job_type = get_text('.//*[@id="jobTypeValue"]', by=By.XPATH, wait=0.3)
+            job_location = get_text('.//*[@id="jobLocationValue"]', by=By.XPATH, wait=0.3)
+            salary = get_text('.//*[@id="jobSalaryValue"]/span', by=By.XPATH, wait=0.3)
+            description = driver.find_element_by_class_name('job-description').text
 
-print(r_list)
-print(len(r_list))
+            # place the job details into the row dictionary
+            row["Job Title"] = job_title
+            row["Company"] = company_name
+            row["Job Type"] = job_type
+            row["Location"] = job_location
+            row["Salary"] = salary
+            row["Job Description"] = description
+            r_list.append(row)
+
+# print(r_list)
+# print(len(r_list))
+
+if location == "":
+    location = "everywhere"
+
+# save results list as a csv file
+data = pd.DataFrame(r_list, columns=[key for key in r_list[0]])
+data.to_csv(f"Monster Jobs webscrape for {job}, {location}.csv", encoding='utf-8', index=False)

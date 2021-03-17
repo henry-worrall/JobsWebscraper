@@ -1,8 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.utils import join_host_port
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC, wait
+from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 
 """
@@ -27,9 +26,10 @@ For each job
 """
 
 ######## PARAMETERS ###########
-job = "junior developer"
-location = "london"
+job = "junior tester"
+location = ""
 required_results = 2000
+default_wait = 20
 ###############################
 
 #define where the webdriver is located
@@ -39,9 +39,9 @@ driver = webdriver.Chrome(PATH)
 
 ############ HELPER FUNCTIONS ###############
 # define function for clicking, based off ID by default
-def click_element(id, by=By.ID):
+def click_element(id, by=By.ID, wait=default_wait):
     try:
-        element = WebDriverWait(driver, 10).until(
+        element = WebDriverWait(driver, wait).until(
             EC.presence_of_element_located((by, str(id)))
             )
         element.click()
@@ -49,9 +49,9 @@ def click_element(id, by=By.ID):
         print(f"Element {id} not found.")
 
 # define function to send keystrokes to element, based off ID by default
-def send_text(id, text, by=By.ID):
+def send_text(id, text, by=By.ID, wait=default_wait):
     try:
-        element = WebDriverWait(driver, 10).until(
+        element = WebDriverWait(driver, wait).until(
             EC.presence_of_element_located((by, str(id)))
             )
         element.send_keys(text)
@@ -59,7 +59,7 @@ def send_text(id, text, by=By.ID):
         print(f"Element {id} not found.")
 
 # define function to gather text/data, based off ID by default
-def get_text(id, by=By.ID, wait=10):
+def get_text(id, by=By.ID, wait=default_wait):
     try:
         element = WebDriverWait(driver, wait).until(
             EC.presence_of_element_located((by, str(id)))
@@ -69,9 +69,9 @@ def get_text(id, by=By.ID, wait=10):
         print(f"Element {id} not found.")
 
 # define a wait for element function, based off Class Name by default
-def element_wait(id, by=By.CLASS_NAME):
+def element_wait(id, by=By.CLASS_NAME, wait=default_wait):
     try:
-        element = WebDriverWait(driver, 10).until(
+        element = WebDriverWait(driver, wait).until(
             EC.presence_of_element_located((by, str(id)))
             )
     except:
@@ -96,7 +96,6 @@ search_pages = [i for i in range(5,int(no_pages),5)]
 r_list = []
 # loop over all the relevant search pages
 for page in search_pages:
-# for page in [5]:
     if len(r_list) >= required_results:
         break
     else:
